@@ -91,7 +91,7 @@ async def synthesize_voice(request: VoiceRequest):
             output_path=audio_path,
             speaking_rate=request.speed,
             pitch=0.0  # Default pitch
-        )
+)
 
         # Upload to Cloudinary
         cloudinary_url = upload_to_cloudinary(audio_path)

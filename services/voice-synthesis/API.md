@@ -37,9 +37,9 @@ Response:
 ```json
 {
   "kids": [
-    {
+  {
       "id": "en-US-Neural2-A",
-      "name": "Friendly Female",
+    "name": "Friendly Female",
       "speed": 1.2
     },
     {
@@ -49,12 +49,12 @@ Response:
     }
   ],
   "scientific": [
-    {
-      "id": "en-US-Neural2-D",
+  {
+    "id": "en-US-Neural2-D",
       "name": "Professional Female",
       "speed": 0.9
-    }
-  ]
+  }
+]
 }
 ```
 

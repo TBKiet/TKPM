@@ -3,24 +3,42 @@ import os
 import asyncio
 from typing import Optional, Dict, List
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
 class GoogleTTSProvider:
     def __init__(self):
-        # Get the absolute path to the credentials file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(current_dir))
-        credentials_path = os.path.join(project_root, "secrets", "google-credentials.json")
+        # Create credentials from environment variables
+        credentials = {
+            "type": os.getenv("GOOGLE_TYPE"),
+            "project_id": os.getenv("GOOGLE_PROJECT_ID"),
+            "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
+            "private_key": os.getenv("GOOGLE_PRIVATE_KEY"),
+            "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "auth_uri": os.getenv("GOOGLE_AUTH_URI"),
+            "token_uri": os.getenv("GOOGLE_TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv("GOOGLE_AUTH_PROVIDER_X509_CERT_URL"),
+            "client_x509_cert_url": os.getenv("GOOGLE_CLIENT_X509_CERT_URL"),
+            "universe_domain": os.getenv("GOOGLE_UNIVERSE_DOMAIN")
+        }
         
-        # Set the environment variable if the file exists
-        if os.path.exists(credentials_path):
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
-        else:
-            raise FileNotFoundError(
-                f"Google Cloud credentials file not found at {credentials_path}. "
-                "Please create a service account and download the credentials file."
+        # Check if all required credentials are present
+        missing_credentials = [key for key, value in credentials.items() if not value]
+        if missing_credentials:
+            raise ValueError(
+                f"Missing required Google Cloud credentials: {', '.join(missing_credentials)}. "
+                "Please set them in your .env file."
             )
+        
+        # Create a temporary credentials file
+        temp_credentials_path = "/tmp/google-credentials.json"
+        with open(temp_credentials_path, "w") as f:
+            json.dump(credentials, f)
+        
+        # Set the environment variable
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_credentials_path
         
         # Initialize the client
         self.client = texttospeech.TextToSpeechClient()
@@ -122,7 +140,6 @@ class GoogleTTSProvider:
         """Get display name for a voice ID"""
         # Remove language code and standardize name
         name = voice_id.replace(f"{language_code}-", "")
-        name = name.replace("Neural2-", "")
         name = name.replace("Wavenet-", "")
         
         # Map voice IDs to friendly names
@@ -176,7 +193,6 @@ class GoogleTTSProvider:
         pitch: float = 0.0
     ) -> float:
         """Synthesize speech from text using Google Cloud TTS"""
-        
         try:
             # Set the text input to be synthesized
             synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -193,7 +209,7 @@ class GoogleTTSProvider:
                 speaking_rate=speaking_rate,
                 pitch=pitch
             )
-            
+
             # Perform the text-to-speech request
             response = await asyncio.to_thread(
                 self.client.synthesize_speech,
@@ -201,13 +217,13 @@ class GoogleTTSProvider:
                 voice=voice,
                 audio_config=audio_config
             )
-            
+
             # Save the audio content to a file
             if output_path:
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
                 with open(output_path, "wb") as out:
                     out.write(response.audio_content)
-            
+
             # Calculate duration (approximate)
             # MP3 files are typically 16kHz, 1 channel, 16-bit
             # This is a rough estimate
